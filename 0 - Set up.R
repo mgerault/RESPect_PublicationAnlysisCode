@@ -39,5 +39,12 @@ devtools::install_github("mgerault/IMPRINTS.CETSA.app")
 
 # all scripts present in this repository are enough to reproduce analysis and figures from the paper
 
+# creating Results and Figures folders
+if(!file.exists("Results")){
+  dir.create("Results")
+}
+if(!file.exists("Figures")){
+  dir.create("Figures")
+}
 
 
