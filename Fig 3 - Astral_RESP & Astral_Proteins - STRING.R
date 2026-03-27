@@ -404,6 +404,10 @@ relations <- relations[which(!is.na(match(relations$cluster,
                                           unique(vertices$cluster)
                                           ))),]
 
+# adding back to line at cluster 2 name
+vertices$cluster[grep("^Cluster 2", vertices$cluster)] <- "Cluster 2\nRegulation of Rho GTPase Signaling\nin Actin Cytoskeletal Dynamics"
+relations$cluster[grep("^Cluster 2", relations$cluster)] <- "Cluster 2\nRegulation of Rho GTPase Signaling\nin Actin Cytoskeletal Dynamics"
+
 string_graph2 <- igraph::graph_from_data_frame(relations, 
                                                vertices = vertices,
                                                directed = FALSE
