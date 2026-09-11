@@ -258,3 +258,124 @@ sum(!(unique(vene_astral_resp_final$Gene[which(vene_astral_resp_final$kept_for_f
         c("ARHGAP25", "DDX46", "DKX1", "FHOD1", "IWS1", "NOP14", 
           "PRPF40A", "SF3B1", "ZMYND8"))
     ) # 52 never reported before
+
+### checking likely caspase cleavage site from the 52 nerver reported
+vene_astral_resp_final_likelycaspase <- vene_astral_resp_final[which(vene_astral_resp_final$kept_for_further_analysis & 
+                                                                       !vene_astral_resp_final$in_merCASBA &
+                                                                       is.na(match(vene_astral_resp_final$Gene,
+                                                                                   c("ARHGAP25", "DDX46", "DKX1", "FHOD1", "IWS1", "NOP14", 
+                                                                                     "PRPF40A", "SF3B1", "ZMYND8")
+                                                                                   )
+                                                                             )
+                                                                     ),
+                                                               c("id", "description", "Gene", "cleaved_site", "cleaved_sequence",
+                                                                 "treatment", "time_category")] %>%
+  group_by(id, description, Gene) %>%
+  filter(sub("Venetoclax", "", treatment) %in%
+           strsplit(time_category, " & ")[[1]]) %>%
+  dplyr::select(-treatment) %>% unique() 
+
+# In their measured cleavage site, is there an aspartic acid followed by a glycine, a serine or an alanine?
+vene_astral_resp_final_likelycaspase$likely_caspase_site <- ifelse(grepl("D", vene_astral_resp_final_likelycaspase$cleaved_sequence),
+                                                                   ifelse(grepl("DG", vene_astral_resp_final_likelycaspase$cleaved_sequence),
+                                                                          "D-G",
+                                                                          ifelse(grepl("DS", vene_astral_resp_final_likelycaspase$cleaved_sequence),
+                                                                                 "D-S",
+                                                                                 ifelse(grepl("DA", vene_astral_resp_final_likelycaspase$cleaved_sequence),
+                                                                                        "D-A", "D"
+                                                                                 )
+                                                                          )
+                                                                   ),
+                                                                   "No Aspartic Acid")
+vene_astral_resp_final_likelycaspase %>%
+  group_by(Gene) %>%
+  summarise(likely_caspase_site = ifelse("D-G" %in% likely_caspase_site,
+                                         "D-G",
+                                         ifelse("D-S" %in% likely_caspase_site,
+                                                "D-S",
+                                                ifelse("D-A" %in% likely_caspase_site,
+                                                       "D-A",
+                                                       ifelse("D" %in% likely_caspase_site,
+                                                              "D", "No Aspartic Acid")
+                                                       )
+                                                )
+                                         )
+            ) %>%
+  ungroup() %>% group_by(likely_caspase_site) %>% count()
+
+# |likely_caspase_site |  n|
+# |:-------------------|--:|
+# |D                   |  8|
+# |D-A                 |  3|
+# |D-G                 | 20|
+# |D-S                 | 18|
+# |No Aspartic Acid    |  3|
+
+
+## Predict disordered regions using PUNCH (https://alienlabs.ucd.ie/punch2/)
+fasta <- seqinr::read.fasta("Data/20240619_UP000005640_9606.fasta", seqtype = "AA")
+fasta <- fasta[grep(paste0("\\|", unique(sub(";.*", "", vene_astral_resp_final$id[which(vene_astral_resp_final$kept_for_further_analysis)])), "\\|",
+                           collapse = "|"),
+                    names(fasta))]
+seqinr::write.fasta(fasta, names(fasta), "Results/FASTA_RESP.fasta")
+rm(fasta)
+# --> FASTA_RESP.fasta was run on https://alienlabs.ucd.ie/punch2/ and results saved in
+# a folder named 'PUNCH_results'
+
+# PUNCH results reading
+punch_pred <- sapply(list.files("Results/PUNCH_results/", full.names = TRUE),
+                     function(p){
+                       punch <- readr::read_csv(p, show_col_types = FALSE, col_names  = FALSE)
+                       colnames(punch) <- c("position", "aa", "score", "is_disordered"); # cutoff at 0.35
+                       punch
+                     }, simplify = FALSE)
+names(punch_pred) <- sub("_.*", "", sub(".*/sp_", "", names(punch_pred)))
+
+vene_astral_resp_final_likelycaspase <- vene_astral_resp_final_likelycaspase %>%
+  group_by(id, description, Gene) %>%
+  mutate(test = as.numeric(factor(likely_caspase_site,
+                                  levels = c("D-G", "D-S", "D-A", "D", "No Aspartic Acid"))
+                           )
+         ) %>%
+  filter(test == min(test)) %>% dplyr::select(-test)
+
+vene_astral_resp_final_likelycaspase <- 
+  cbind(vene_astral_resp_final_likelycaspase,
+        Reduce(rbind,
+               apply(vene_astral_resp_final_likelycaspase, 1,
+                     function(x){
+                       disor <- punch_pred[[sub(";.*", "", x[["id"]])]]
+                       
+                       cleavage_site <- as.numeric(strsplit(sub(";.*", "", x[["cleaved_site"]]), "-|~")[[1]])
+                       disor <- disor[(cleavage_site[1]-10):(cleavage_site[2]+10),]
+                       res <- as.data.frame(t(unclass(summary(disor$score)))) 
+                       colnames(res) <- paste0("DisorScore_", colnames(res))
+                       res$Disor_prop <- sum(disor$is_disordered == 1)/nrow(disor);
+                       res[,c(ncol(res), 1:(ncol(res)-1))]
+                     })
+               )
+        ) 
+vene_astral_resp_final_likelycaspase$Gene[which(duplicated(vene_astral_resp_final_likelycaspase$Gene))]
+# "EIF3A" "RBMX" "SUPT6H" still have two cleavage sites
+# keeping one with highest Median disordered PUNCH score
+vene_astral_resp_final_likelycaspase <- vene_astral_resp_final_likelycaspase %>%
+  group_by(id, Gene, description) %>%
+  filter(DisorScore_Median == max(DisorScore_Median))
+
+# plotting number of proteins vs their median PUNCH score (SFig 5A)
+ggplot(vene_astral_resp_final_likelycaspase, aes(DisorScore_Median)) +
+  geom_histogram(breaks = seq(0,1,0.1),
+                 color = "black", fill = "lightblue", 
+                 linewidth = 0.8) +
+  geom_text(stat = "bin", aes(label = after_stat(count)),
+            vjust = -1, breaks = seq(0,1,0.1), size = 6) +
+  geom_vline(xintercept = 0.35, linetype = "dashed", color = "red") +
+  scale_y_continuous(limits = c(0, 20), breaks = seq(0,20,2)) +
+  scale_x_continuous(breaks = seq(0,1,0.1)) +
+  labs(x = "Median PUNCH score", y = "Nb Unreported RESP Proteins") +
+  theme_bw() +
+  theme(axis.title = element_text(face = "bold", color = "black", size = 18),
+        axis.text = element_text(color = "black", size = 16))
+
+ggsave("Figures/PUNCH-score-IDR_Unreported_RESP_AstralVenetoclax.png",
+       dpi = 300, width = 12, height = 7)

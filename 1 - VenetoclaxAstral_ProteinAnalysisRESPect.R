@@ -85,6 +85,56 @@ file.rename(list.files(pattern = "\\d{6}_\\d{4}_venetoclax_astral_12h_QPHits_ana
             "Results/venetoclax_astral_12h_QPHits_analysis")
 
 
+## analyzing potential DEAR effect: QP vs 37°C
+# 3 hours
+vene_astral_DEAR3h <- vene_astral_protdiff3h[,-grep("^5", colnames(vene_astral_protdiff3h))]
+colnames(vene_astral_DEAR3h)[grep("^36C_", colnames(vene_astral_DEAR3h))] <- paste0("11C",
+                                                                                    sub("36C", "", 
+                                                                                        sub("Venetoclax3h", "QP-Venetoclax3h", colnames(vene_astral_DEAR3h)[grep("^36C_", colnames(vene_astral_DEAR3h))])
+                                                                                        )
+                                                                                    )
+colnames(vene_astral_DEAR3h)[grep("^37C_", colnames(vene_astral_DEAR3h))] <- paste0("11C",
+                                                                                    sub("37C", "", 
+                                                                                        sub("Venetoclax3h", "37C-Venetoclax3h", colnames(vene_astral_DEAR3h)[grep("^37C_", colnames(vene_astral_DEAR3h))])
+                                                                                        )
+                                                                                    )
+# computing QP - 37°C
+vene_astral_DEAR3hdiff3h <- imprints_caldiff_f(vene_astral_DEAR3h, "37C-Venetoclax3h")
+# statistical analysis
+vene_astral_DEAR_hits3h <- IMPRINTS.PhosphoQP::imprints_phoQP_hit_protein(vene_astral_DEAR3h, 
+                                                                          vene_astral_DEAR3hdiff3h,
+                                                                          ctrl = "37C-Venetoclax3h", QP_name = "11C",
+                                                                          FC_cutoff = 0.2, FDR = 0.05, curvature = 0.05,
+                                                                          folder_name = "venetoclax_astral_3h_DEAR_analysis")
+# move file to Results folder
+file.rename(list.files(pattern = "\\d{6}_\\d{4}_venetoclax_astral_3h_DEAR_analysis"),
+            "Results/venetoclax_astral_3h_DEAR_analysis")
+
+# 12 hours
+vene_astral_DEAR12h <- vene_astral_protdiff12h[,-grep("^5", colnames(vene_astral_protdiff12h))]
+colnames(vene_astral_DEAR12h)[grep("^36C_", colnames(vene_astral_DEAR12h))] <- paste0("11C",
+                                                                                      sub("36C", "", 
+                                                                                          sub("Venetoclax12h", "QP-Venetoclax12h", colnames(vene_astral_DEAR12h)[grep("^36C_", colnames(vene_astral_DEAR12h))])
+                                                                                          )
+                                                                                      )
+colnames(vene_astral_DEAR12h)[grep("^37C_", colnames(vene_astral_DEAR12h))] <- paste0("11C",
+                                                                                      sub("37C", "", 
+                                                                                          sub("Venetoclax12h", "37C-Venetoclax12h", colnames(vene_astral_DEAR12h)[grep("^37C_", colnames(vene_astral_DEAR12h))])
+                                                                                          )
+                                                                                      )
+# computing QP - 37°C
+vene_astral_DEAR3hdiff12h <- imprints_caldiff_f(vene_astral_DEAR12h, "37C-Venetoclax12h")
+# statistical analysis
+vene_astral_DEAR_hits12h <- IMPRINTS.PhosphoQP::imprints_phoQP_hit_protein(vene_astral_DEAR12h, 
+                                                                           vene_astral_DEAR3hdiff12h,
+                                                                           ctrl = "37C-Venetoclax12h", QP_name = "11C",
+                                                                           FC_cutoff = 0.2, FDR = 0.05, curvature = 0.05,
+                                                                           folder_name = "venetoclax_astral_12h_DEAR_analysis")
+# move file to Results folder
+file.rename(list.files(pattern = "\\d{6}_\\d{4}_venetoclax_astral_12h_DEAR_analysis"),
+            "Results/venetoclax_astral_12h_DEAR_analysis")
+
+
 ### Comparing number of quantified proteins with Astral MS compare to previous venetoclax dataset
 pr1h <- readr::read_tsv("Data/Venetoclax&AT-IAP_Ramosetal/Venetoclax1h_proteins_postnorm.txt")
 pr6h <- readr::read_tsv("Data/Venetoclax&AT-IAP_Ramosetal/Venetoclax6h_proteins_postnorm.txt")
