@@ -123,9 +123,11 @@ vertex <- dear_hits[, c("Gene", "treatment", "QPvs37", "RESP_shift")] %>%
   rbind(unique(dearhits_enrich_cc[,c("Description", "Count", "treatment")]) %>%
           mutate(treatment = sub("Venetoclax", "DEAR-", treatment)) %>%
           dplyr::rename(name = Description, size = Count, category = treatment) %>%
-          mutate(category = paste("GO-CC", category), QPvs37 = NA, RESP_shift = NA)) %>%
+          mutate(category = paste("GO-CC", sub("DEAR-", "Term ", category)), 
+                 QPvs37 = NA, RESP_shift = NA)) %>%
   mutate(term = ifelse(size != 0, name, NA),
-         category = factor(category, levels = c("DEAR-3h", "DEAR-12h", "GO-CC DEAR-3h", "GO-CC DEAR-12h")))
+         category = factor(category, levels = c("DEAR-3h", "DEAR-12h", 
+                                                "GO-CC Term 3h", "GO-CC Term 12h")))
 
 vertex$RESP_shift[which(is.na(vertex$RESP_shift))] <- "None"
 vertex$labsize <- 0.4
@@ -155,14 +157,17 @@ g3 <- ggraph(g3, layout = 'kk', weights = padj) +
                   max.time = 2, max.iter = 20000,
                   color = "black", show.legend = FALSE, fontface = "bold", 
                   repel = TRUE, min.segment.length = 0, max.overlaps = 50) +
-  scale_size_continuous(breaks = seq(5,30, 10), range = c(3,14),
+  scale_size_continuous(breaks = seq(5,30, 10), range = c(4,14),
                         limits = c(0,35), name = "Gene count") +
   scale_shape_manual(values = c("None" = 21, "3h & 12h" = 23, "12h" = 24, "3h" = 25),
                      name = "RESP shift") +
-  scale_fill_gradient2(high = "darkorange", low = "blue", name = "QP versus 37°C",
-                       na.value = "#cad182", limits = c(-1.5, 1), breaks = c(-1.5,-1,-0.5,0,0.25, 0.5, 1)) +
+  scale_fill_gradientn(colors = c("#001782", "#1738D7", "#4564FC",
+                                  "white", "#F6823C", "#E35D14", "#923300"), name = "QP versus 37°C",
+                       na.value = "#cad182", limits = c(-1.5, 1), 
+                       breaks = c(-1.5,-1,-0.5,0,0.25, 0.5, 1),
+                       values =  scales::rescale(c(-1.5,-1,-0.5,0,0.25, 0.5, 1))) +
   scale_color_manual(values = c("DEAR-3h" = "red", "DEAR-12h" = "purple", 
-                                "GO-CC DEAR-3h"  = "#8A9039", "GO-CC DEAR-12h" = "#595E0A"), 
+                                "GO-CC Term 3h"  = "#8A9039", "GO-CC Term 12h" = "#595E0A"), 
                      name = "", na.value = "black",
                      breaks = na.omit(unique(vertex$category))) + 
   guides(color = guide_legend(override.aes = list(size = 5, shape = 21), order = 1),
@@ -204,14 +209,17 @@ g12 <- ggraph(g12, layout = 'kk', weights = padj) +
                   color = "black", show.legend = FALSE, fontface = "bold", 
                   #angle = 0, hjust = 0.5, nudge_y = 0.1, 
                   repel = TRUE, min.segment.length = 0, max.overlaps = 50) +
-  scale_size_continuous(breaks = seq(5,30, 10), range = c(3,14),
+  scale_size_continuous(breaks = seq(5,30, 10), range = c(4,14),
                         limits = c(0,35), name = "Gene count") +
   scale_shape_manual(values = c("None" = 21, "3h & 12h" = 23, "12h" = 24, "3h" = 25),
                      name = "RESP shift") +
-  scale_fill_gradient2(high = "darkorange", low = "blue", name = "QP versus 37°C",
-                       na.value = "#cad182", limits = c(-1.5, 1), breaks = c(-1.5,-1,-0.5,0,0.25, 0.5, 1)) +
+  scale_fill_gradientn(colors = c("#001782", "#1738D7", "#4564FC",
+                                  "white", "#F6823C", "#E35D14", "#923300"), name = "QP versus 37°C",
+                       na.value = "#cad182", limits = c(-1.5, 1), 
+                       breaks = c(-1.5,-1,-0.5,0,0.25, 0.5, 1),
+                       values =  scales::rescale(c(-1.5,-1,-0.5,0,0.25, 0.5, 1))) +
   scale_color_manual(values = c("DEAR-3h" = "red", "DEAR-12h" = "purple", 
-                                "GO-CC DEAR-3h"  = "#8A9039", "GO-CC DEAR-12h" = "#595E0A"), 
+                                "GO-CC Term 3h"  = "#8A9039", "GO-CC Term 12h" = "#595E0A"), 
                      name = "", na.value = "black",
                      breaks = na.omit(unique(vertex$category))) + 
   guides(color = guide_legend(override.aes = list(size = 5, shape = 21), order = 1),
@@ -229,7 +237,7 @@ g12 <- ggraph(g12, layout = 'kk', weights = padj) +
 
 
 ggsave("Figures/ORA_GO-CC_network_DEAR_AstralVenetoclax_3h.png",
-       plot = g3,  dpi = 300, device = "png", width = 16, height = 10)
+       plot = g3,  dpi = 300, device = "png", width = 18, height = 11)
 ggsave(Figures/"ORA_GO-CC_network_DEAR_AstralVenetoclax_12h.png",
-       plot = g12,  dpi = 300, device = "png", width = 16, height = 10)
+       plot = g12,  dpi = 300, device = "png", width = 18, height = 11)
 
